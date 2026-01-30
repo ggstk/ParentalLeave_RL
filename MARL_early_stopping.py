@@ -706,7 +706,12 @@ class NashQLearning:
             self.epsilon = 0.99
             self.learning_rate = 0.5
             done_counter = 0
-          
+            # convergence 
+            prev_q_vector = None
+            stable_counter = 0
+            tol = 1e-2
+            required_stable_episodes = 200
+
             Q0_values1, Q0_values2, Q0_values3, Q0_values4, episodes = [], [], [], [], []
             Q1_values1, Q1_values2, Q1_values3, Q1_values4 = [], [], [], []
             for episode in range(update_num):
@@ -808,7 +813,27 @@ class NashQLearning:
                     init_state, (1, 0), Q1)
                 Q1_value4 = self._get_q_value(
                     init_state, (1, 1), Q1)
-               
+                current_q_vector = [Q0_value1, Q0_value2, Q0_value3, Q0_value4, 
+                                    Q1_value1, Q1_value2, Q1_value3, Q1_value4]
+                
+                if prev_q_vector is not None:
+                    max_diff = max(abs(c - p) for c, p in zip(current_q_vector, prev_q_vector))
+                    # print(max_diff)
+                    
+
+                    relative_diff = max_diff / (max(abs(x) for x in current_q_vector) + 1e-10)
+                    # print(max_diff,relative_diff)
+                    if relative_diff < 1e-5:  #0.001% 
+                        stable_counter += 1
+                    else:
+                        stable_counter = 0
+
+                    # if max_diff < tol:
+                    #     stable_counter += 1
+                    # else:
+                    #     stable_counter = 0 #
+                
+                prev_q_vector = current_q_vector.copy()
                 episodes.append(episode)
                 Q0_values1.append(Q0_value1)
                 Q0_values2.append(Q0_value2)
@@ -819,7 +844,13 @@ class NashQLearning:
                 Q1_values2.append(Q1_value2)
                 Q1_values3.append(Q1_value3)
                 Q1_values4.append(Q1_value4)
-                
+                #Early Stopping
+                if stable_counter >= required_stable_episodes and episode>1000:
+                    print(f"State {init_state} converged early at episode {episode}")
+                    covergence_episode.append(episode+1)
+                    break
+                if episode==update_num-1:
+                    covergence_episode.append(episode+1)
                    
         
             learning_curve_data = {
@@ -877,16 +908,52 @@ class NashQLearning:
     
         with open(learning_curve_data_path, 'w') as f:
             json.dump(covergence_episode, f)  
- 
+
+        #test 
+        df0 = pd.DataFrame(list(Q0.items()), columns=["S_A", "Q0"])
+        df1 = pd.DataFrame(list(Q1.items()), columns=["S_A", "Q1"])
+
+        merged_df = pd.merge(df0, df1, on="S_A", how="outer")
+
+        # Split the S_A column into two columns: joint_state and joint_action
+        merged_df[['joint_state', 'joint_action']] = pd.DataFrame(merged_df['S_A'].tolist(), index=merged_df.index)
+
+        # Drop the original S_A column
+        merged_df = merged_df[['joint_state', 'joint_action', 'Q0', 'Q1']]
+
+        merged_df[['state0', "state1"]] = pd.DataFrame(merged_df['joint_state'].tolist(), index=merged_df.index)
+        merged_df = merged_df[['state0', "state1", 'joint_action', 'Q0', 'Q1']]
+       
+        condition = ~((merged_df['state0'] == (0, 0, 0, 0, 25)) | (merged_df['state1'] == (0, 0, 0, 0, 25)))
+
+
+        merged_df = merged_df[condition]
+        # Save to Excel file
+        q_values_comparison_path = os.path.join("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/",
+                                                f"q_values_comparison_test.xlsx")
+        merged_df.to_excel(q_values_comparison_path, index=False)
+
+
+
+
+
+
+
+
+
+
+
+        
+
         # save q tables
-        q0_path = os.path.join("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_tables/", f"Q0_exp{self.experiment_num}.pickle")
-        with open(q0_path, 'wb') as f:
-            pickle.dump(Q0, f)
-        q1_path = os.path.join("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_tables/", f"Q1_exp{self.experiment_num}.pickle")
-        with open(q1_path, 'wb') as f:
-            pickle.dump(Q1, f)
-        if return_history:
-            print(state_tracker)
+        # q0_path = os.path.join(base_dir, f"Q0_exp{self.experiment_num}.pickle")
+        # with open(q0_path, 'wb') as f:
+        #     pickle.dump(Q0, f)
+        # q1_path = os.path.join(base_dir, f"Q1_exp{self.experiment_num}.pickle")
+        # with open(q1_path, 'wb') as f:
+        #     pickle.dump(Q1, f)
+        # if return_history:
+        #     print(state_tracker)
         return Q0, Q1
 
 

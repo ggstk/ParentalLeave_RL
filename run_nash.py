@@ -7,7 +7,7 @@ employee1 = Employee((7, 3, 1, 8, 8))#(w_yrs,pos,opt,age,time)
 
 if __name__ == "__main__":
     experiment_num=80
-    alpha,delta=0.1,0 
+    alpha,delta=0,0 
     c1,c2 = 3300,3300
     print(experiment_num,alpha,delta)
     print(c1,c2)
