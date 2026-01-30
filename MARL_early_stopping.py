@@ -292,9 +292,14 @@ class ParentalLeave(discrete_env.DiscreteEnv):
                     if np.isclose(promo_prob, 1.0):
                         n_s0 = (0, min(pos0 + 1, self.n_position - 1), n_opt0, n_age0, n_time0)
                         next_state0 = (1.0, n_s0, rew[0], done)
-                    else:
-                        n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
-                        next_state0 = (1.0, n_s0, rew[0], done)
+                    else:# eliminates promotion eligibility     -->allow promotion review upon return
+                        # n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
+                        # next_state0 = (1.0, n_s0, rew[0], done)
+                        n_s0_promo = (0, min(pos0 + 1, self.n_position - 1), n_opt0, n_age0, n_time0)
+                        n_s0_no_promo = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
+                        next_state0 = [(promo_prob, n_s0_promo, rew[0], done),
+                                   (1.0 - promo_prob, n_s0_no_promo, rew[0], done)]
+                
                 else:
                     n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
                     next_state0 = (1.0, n_s0, rew[0], done)
@@ -328,8 +333,12 @@ class ParentalLeave(discrete_env.DiscreteEnv):
                         n_s1 = (0, min(pos1 + 1, self.n_position - 1), n_opt1, n_age1, n_time1)
                         next_state1 = (1.0, n_s1, rew[1], done)
                     else:
-                        n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
-                        next_state1 = (1.0, n_s1, rew[1], done)
+                        # n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
+                        # next_state1 = (1.0, n_s1, rew[1], done)
+                        n_s1_promo = (0, min(pos1 + 1, self.n_position - 1), n_opt1, n_age1, n_time1)
+                        n_s1_no_promo = (n_w_yrs1, pos1, n_opt1, n_age1, n_time1)
+                        next_state1 = [(promo_prob, n_s1_promo, rew[1], done),
+                                    (1.0 - promo_prob, n_s1_no_promo, rew[1], done)]
                 else:
                     n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
                     next_state1 = (1.0, n_s1, rew[1], done)
