@@ -703,6 +703,7 @@ class NashQLearning:
         update_num=5000
 
         for init_state in reversed(self.env.joint_states):
+            print(init_state)
             self.epsilon = 0.99
             self.learning_rate = 0.5
             done_counter = 0
