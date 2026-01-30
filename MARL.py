@@ -903,25 +903,20 @@ class NashQLearning:
                 if episode==update_num-1:
                     covergence_episode.append(episode+1)
                    
-            # print("covergence_episode",covergence_episode)
         
-            
-
-
-
-        #     learning_curve_data = {
-        #         'episodes': episodes,
-        #         'Q0_(0,0)': Q0_values1,
-        #         'Q0_(0,1)': Q0_values2,
-        #         'Q0_(1,0)': Q0_values3,
-        #         'Q0_(1,1)': Q0_values4,
-        #         'Q1_(0,0)': Q1_values1,
-        #         'Q1_(0,1)': Q1_values2,
-        #         'Q1_(1,0)': Q1_values3,
-        #         'Q1_(1,1)': Q1_values4
-        #     }
-        #     # base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/saved_models/"
-        #     learning_curve_data_path = os.path.join(base_dir, f"learning_curve_data_exp{self.experiment_num}_{init_state}.json")
+            learning_curve_data = {
+                'episodes': episodes,
+                'Q0_(0,0)': Q0_values1,
+                'Q0_(0,1)': Q0_values2,
+                'Q0_(1,0)': Q0_values3,
+                'Q0_(1,1)': Q0_values4,
+                'Q1_(0,0)': Q1_values1,
+                'Q1_(0,1)': Q1_values2,
+                'Q1_(1,0)': Q1_values3,
+                'Q1_(1,1)': Q1_values4
+            }
+            base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/saved_models/"
+            learning_curve_data_path = os.path.join(base_dir, f"learning_curve_data_exp{self.experiment_num}_{init_state}.json")
         
         #     with open(learning_curve_data_path, 'w') as f:
         #         json.dump(learning_curve_data, f)
