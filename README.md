@@ -6,7 +6,6 @@ Analyzing strategic parental leave decisions using two-player multi-agent reinfo
 
 ## Installation
 
-
 <!-- - To install, `cd` into the root directory and type `pip install -e .` -->
 
 <!-- - Use `requirements.txt` to install dependencies. -->
