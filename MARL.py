@@ -13,6 +13,12 @@ import matplotlib.pyplot as plt
 # RuntimeWarning
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave"
+save_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/saved_models"
+Q_learning_curve_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_learning_curve/"
+Q_tables_dir="/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_tables/"
+
+
 class Employee:
     def __init__(self, initial_state=None, actions=('근무', '휴직 사용')):
         self.initial_state = initial_state
@@ -98,8 +104,7 @@ class ParentalLeave(discrete_env.DiscreteEnv):
             # for time in range(self.max_years)
         ]
         self.joint_states_num=len(self.joint_states)
-        base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/saved_models"
-        reset_states_path = os.path.join(base_dir, f"reset_states.json")
+        reset_states_path = os.path.join(save_dir, f"reset_states.json")
         with open(reset_states_path, 'w') as f:
             for state in self.joint_states:
                 f.write(json.dumps(state)+"," + '\n')
@@ -292,9 +297,14 @@ class ParentalLeave(discrete_env.DiscreteEnv):
                     if np.isclose(promo_prob, 1.0):
                         n_s0 = (0, min(pos0 + 1, self.n_position - 1), n_opt0, n_age0, n_time0)
                         next_state0 = (1.0, n_s0, rew[0], done)
-                    else:
-                        n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
-                        next_state0 = (1.0, n_s0, rew[0], done)
+                    else:# eliminates promotion eligibility     -->allow promotion review upon return
+                        # n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
+                        # next_state0 = (1.0, n_s0, rew[0], done)
+                        n_s0_promo = (0, min(pos0 + 1, self.n_position - 1), n_opt0, n_age0, n_time0)
+                        n_s0_no_promo = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
+                        next_state0 = [(promo_prob, n_s0_promo, rew[0], done),
+                                   (1.0 - promo_prob, n_s0_no_promo, rew[0], done)]
+                
                 else:
                     n_s0 = (state0[0] + self.add_years, pos0, n_opt0, n_age0, n_time0)
                     next_state0 = (1.0, n_s0, rew[0], done)
@@ -328,8 +338,12 @@ class ParentalLeave(discrete_env.DiscreteEnv):
                         n_s1 = (0, min(pos1 + 1, self.n_position - 1), n_opt1, n_age1, n_time1)
                         next_state1 = (1.0, n_s1, rew[1], done)
                     else:
-                        n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
-                        next_state1 = (1.0, n_s1, rew[1], done)
+                        # n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
+                        # next_state1 = (1.0, n_s1, rew[1], done)
+                        n_s1_promo = (0, min(pos1 + 1, self.n_position - 1), n_opt1, n_age1, n_time1)
+                        n_s1_no_promo = (n_w_yrs1, pos1, n_opt1, n_age1, n_time1)
+                        next_state1 = [(promo_prob, n_s1_promo, rew[1], done),
+                                    (1.0 - promo_prob, n_s1_no_promo, rew[1], done)]
                 else:
                     n_s1 = (w_yrs1 + self.add_years, pos1, n_opt1, n_age1, n_time1)
                     next_state1 = (1.0, n_s1, rew[1], done)
@@ -565,11 +579,10 @@ class NashQLearning:
     def collect_final_nash_trajectory(self):
         # self.env.reset(seed=0)
         # random.seed(0)
-        #print("Collecting Nash equilibrium trajectory...")
+        # print("Collecting trajectory under Nash equilibrium...")
         trajectory = []
         #print("initial_state",self.env.current_states)
         while True:
-            
             action0, action1 = self._select_actions(epsilon=0)
             action0, action1 = int(action0), int(action1)
 
@@ -588,19 +601,17 @@ class NashQLearning:
                 i = categorical_sample([t[0] for t in next_states[1]], self.env.np_random)
                 next_states = (next_states[0], next_states[1][i])
 
-
             self.env.current_states = (next_states[0][1], next_states[1][1])
             if done:
                 end_state = trajectory[-1]["state"]
                 # if end_state[0][2] == 1 and end_state[1][2] == 0:
                 #     print(trajectory)
                 break
-               
-        base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/saved_models"
-        trajectory_path = os.path.join(base_dir, f"final_nash_trajectory_exp{self.experiment_num}.json")
+        trajectory_path = os.path.join(save_dir, f"final_nash_trajectory_exp{self.experiment_num}.json")
         with open(trajectory_path, 'w') as f:
             json.dump(trajectory, f, indent=4)
         return trajectory
+
 
     def calculate_prob(self,n):
         state_num=len(self.env.joint_states)
@@ -667,10 +678,8 @@ class NashQLearning:
                 self.env.current_states = state
                 trajectory = self.collect_final_nash_trajectory()
                 end_state = trajectory[-1]["state"]
-                #print(end_state)
                 if end_state[0][2] == 0 :
                     counter1 += 1
-                    
                 if end_state[1][2] == 0:
                     counter2 += 1
             prob1=counter1/state_num
@@ -698,16 +707,14 @@ class NashQLearning:
         state_tracker = [self.env.current_states]
         trajectory = []
         studied_state=[]
-        covergence_episode=[]
-        
+        covergence_episode=[] 
         update_num=5000
 
         for init_state in reversed(self.env.joint_states):
-            print(init_state)
             self.epsilon = 0.99
             self.learning_rate = 0.5
             done_counter = 0
-          
+
             Q0_values1, Q0_values2, Q0_values3, Q0_values4, episodes = [], [], [], [], []
             Q1_values1, Q1_values2, Q1_values3, Q1_values4 = [], [], [], []
             for episode in range(update_num):
@@ -809,7 +816,9 @@ class NashQLearning:
                     init_state, (1, 0), Q1)
                 Q1_value4 = self._get_q_value(
                     init_state, (1, 1), Q1)
-               
+                current_q_vector = [Q0_value1, Q0_value2, Q0_value3, Q0_value4, 
+                                    Q1_value1, Q1_value2, Q1_value3, Q1_value4]
+                
                 episodes.append(episode)
                 Q0_values1.append(Q0_value1)
                 Q0_values2.append(Q0_value2)
@@ -820,7 +829,13 @@ class NashQLearning:
                 Q1_values2.append(Q1_value2)
                 Q1_values3.append(Q1_value3)
                 Q1_values4.append(Q1_value4)
-                
+                #Early Stopping
+                if stable_counter >= required_stable_episodes and episode>1000:
+                    # print(f"State {init_state} converged early at episode {episode}")
+                    covergence_episode.append(episode+1)
+                    break
+                if episode==update_num-1:
+                    covergence_episode.append(episode+1)
                    
         
             learning_curve_data = {
@@ -834,56 +849,53 @@ class NashQLearning:
                 'Q1_(1,0)': Q1_values3,
                 'Q1_(1,1)': Q1_values4
             }
-            base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_learning_curve/"
-            learning_curve_data_path = os.path.join(base_dir, f"learning_curve_data_exp{self.experiment_num}_{init_state}.json")
+            learning_curve_data_path = os.path.join(Q_learning_curve_dir, f"learning_curve_data_exp{self.experiment_num}_{init_state}.json")
         
             with open(learning_curve_data_path, 'w') as f:
                 json.dump(learning_curve_data, f)
                 
             studied_state.append(init_state)
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-            x=learning_curve_data["episodes"]
+            # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+            # x=learning_curve_data["episodes"]
 
-            ax1.plot(x, learning_curve_data['Q0_(0,0)'], label="Q0_(Work, Work)")
-            ax1.plot(x, learning_curve_data['Q0_(0,1)'], label="Q0_(Work, Leave)")
-            ax1.plot(x, learning_curve_data['Q0_(1,0)'], label="Q0_(Leave, Stay)")
-            ax1.plot(x, learning_curve_data['Q0_(1,1)'], label="Q0_(Leave, Leave)")
-            ax1.set_title("Learning Curve for Agent 0", fontsize=14)
-            ax1.set_xlabel("Episodes")
-            ax1.set_ylabel("Q-Value")
-            ax1.legend()
-            ax1.grid(True, linestyle='--', alpha=0.6)
+            # ax1.plot(x, learning_curve_data['Q0_(0,0)'], label="Q0_(Work, Work)")
+            # ax1.plot(x, learning_curve_data['Q0_(0,1)'], label="Q0_(Work, Leave)")
+            # ax1.plot(x, learning_curve_data['Q0_(1,0)'], label="Q0_(Leave, Stay)")
+            # ax1.plot(x, learning_curve_data['Q0_(1,1)'], label="Q0_(Leave, Leave)")
+            # ax1.set_title("Learning Curve for Agent 0", fontsize=14)
+            # ax1.set_xlabel("Episodes")
+            # ax1.set_ylabel("Q-Value")
+            # ax1.legend()
+            # ax1.grid(True, linestyle='--', alpha=0.6)
 
-            ax2.plot(x, learning_curve_data['Q1_(0,0)'], label="Q1_(Stay, Stay)")
-            ax2.plot(x, learning_curve_data['Q1_(0,1)'], label="Q1_(Stay, Leave)")
-            ax2.plot(x, learning_curve_data['Q1_(1,0)'], label="Q1_(Leave, Stay)")
-            ax2.plot(x, learning_curve_data['Q1_(1,1)'], label="Q1_(Leave, Leave)")
-            ax2.set_title("Learning Curve for Agent 1", fontsize=14)
-            ax2.set_xlabel("Episodes")
-            ax2.set_ylabel("Q-Value")
-            ax2.legend()
-            ax2.grid(True, linestyle='--', alpha=0.6)
+            # ax2.plot(x, learning_curve_data['Q1_(0,0)'], label="Q1_(Stay, Stay)")
+            # ax2.plot(x, learning_curve_data['Q1_(0,1)'], label="Q1_(Stay, Leave)")
+            # ax2.plot(x, learning_curve_data['Q1_(1,0)'], label="Q1_(Leave, Stay)")
+            # ax2.plot(x, learning_curve_data['Q1_(1,1)'], label="Q1_(Leave, Leave)")
+            # ax2.set_title("Learning Curve for Agent 1", fontsize=14)
+            # ax2.set_xlabel("Episodes")
+            # ax2.set_ylabel("Q-Value")
+            # ax2.legend()
+            # ax2.grid(True, linestyle='--', alpha=0.6)
 
-            plt.tight_layout()
+            # plt.tight_layout()
             # plt.show()
 
-            image_dir="/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_learning_curve/"
-            learning_curve_image_path=os.path.join( image_dir,f"learning_curve_q0_exp{self.experiment_num}_{init_state}.png")
-            plt.savefig(learning_curve_image_path)
-            print("image is saved")
-            plt.close()
+            # image_dir="/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_learning_curve/"
+            # learning_curve_image_path=os.path.join( image_dir,f"learning_curve_q0_exp{self.experiment_num}_{init_state}.png")
+            # plt.savefig(learning_curve_image_path)
+            # print("image is saved")
+            # plt.close()
             
-        base_dir = "/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_learning_curve/"
-        convergence_speed_path = os.path.join(base_dir, f"learning_curve_data_exp{self.experiment_num}_convergence_episode.json")
-    
-        with open(learning_curve_data_path, 'w') as f:
+        convergence_speed_path = os.path.join(Q_learning_curve_dir, f"learning_curve_data_exp{self.experiment_num}_convergence_episode.json")
+        with open(convergence_speed_path, 'w') as f:
             json.dump(covergence_episode, f)  
- 
+   
         # save q tables
-        q0_path = os.path.join("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_tables/", f"Q0_exp{self.experiment_num}.pickle")
+        q0_path = os.path.join(Q_tables_dir, f"Q0_exp{self.experiment_num}.pickle")
         with open(q0_path, 'wb') as f:
             pickle.dump(Q0, f)
-        q1_path = os.path.join("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/Q_tables/", f"Q1_exp{self.experiment_num}.pickle")
+        q1_path = os.path.join(Q_tables_dir, f"Q1_exp{self.experiment_num}.pickle")
         with open(q1_path, 'wb') as f:
             pickle.dump(Q1, f)
         if return_history:

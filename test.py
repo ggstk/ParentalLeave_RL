@@ -111,8 +111,6 @@
 #     plt.savefig("/home/zhaolixue/ZHAOLIXUE/ParentalLeave/results/" + f"exp{experiment_num}_policy{policy_num}.png")
 
 
-
-
 import matplotlib.pyplot as plt
 import os,json
 import seaborn as sns
@@ -168,7 +166,6 @@ labels = [
 
 
 markers = ["o"] * 3
-# 绘图
 plt.figure(figsize=(11, 5))
 sns.set_theme()
 # #X=[0,3300,4150,5000,10000,20000]
